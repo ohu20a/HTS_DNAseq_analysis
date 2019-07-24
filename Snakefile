@@ -13,6 +13,8 @@ configfile: "config.yaml"
 RAW_FILES, EXT,  = glob_wildcards("raw_data/{raw_file,[\w\d]+_[\w\d]+_R(1|2)}.{ext,fastq(\.gz)?}")
 SAMPLES = []
 SAMPLES_DICT = defaultdict(lambda: defaultdict(lambda: defaultdict(str)))
+GENOME = os.path.basename(config['genome'])
+
 for file in RAW_FILES:
     match = re.match(r"([\w\d]+)_([\w\d]+)_(R[12])", file)
     if match:
@@ -34,7 +36,33 @@ rule all:
         "Results/raw_fastqc/multiqc_report.html",
         "Results/trimmed_fastqc/multiqc_report.html",
 #        expand("Results/mapping/{sample}.merged.sorted.bam.bai", sample = SAMPLES)
-        "Results/metrics/mapping_stats.csv"
+        "Results/metrics/mapping_stats.csv",
+        "Results/variants/variants.vcf"
+
+rule link_ref:
+    input: expand("{genome}.{ext}", genome = config['genome'], ext = config['genome_extension'])
+    output: expand("ref/{genome}.{ext}", genome = GENOME, ext = config['genome_extension'])
+    shell:
+     """
+     ln -s {input} {output}
+     """
+
+rule unzip_ref:
+    input: expand("{{file}}.{ext}", ext = config['genome_extension'])
+    output: "{file}.fa"
+    shell:
+     """
+     gunzip -k -c {input} > {output}
+     """
+
+rule fa_idx:
+    input: "ref/{file}.fa"
+    output: "ref/{file}.fa.fai"
+    params: time = "60"
+    shell:
+     """
+     samtools faidx {input}
+     """
 
 rule raw_fastqc:
     input: "raw_data/{sample}.fastq.gz"
@@ -87,13 +115,8 @@ rule trimmed_multiqc:
      """
 
 rule bwa_index:
-    input: config["genome"] + "." + config["genome_extension"]
-    output:
-        config["genome"] + ".amb",
-        config["genome"] + ".ann",
-        config["genome"] + ".bwt",
-        config["genome"] + ".pac",
-        config["genome"] + ".sa"
+    input: expand("ref/{genome}.fa", genome = GENOME)
+    output: expand("ref/{genome}.{ext}", genome = GENOME, ext = ["amb", "ann", "bwt", "pac", "sa"])
     conda: "envs/bwa.yaml"
     shell:
      """
@@ -119,23 +142,16 @@ rule bwa:
 rule combine_bam:
     input: lambda wildcards: expand("Results/mapping/{file}.aligned.sorted.bam", file = sample_list(wildcards.sample))
     output: temp("Results/mapping/{sample}.merged.bam")
-    conda: "envs/samtools.yaml"
+    threads: 2
+    conda: "envs/sambamba.yaml"
     script:
      """
      tools/merge_bam.py
      """
 
-rule clean_unmerged_bam:
-    input: "Results/mapping/{sample}.merged.bam"
-    output: temp("Results/temp/{sample}.cleanup")
-    shell:
-     """
-     rm Results/mapping/{sample}_*.aligned.bam
-     """
-
 rule sort_bam:
     input: "Results/mapping/{sample}.{stage}.bam"
-    output: "Results/mapping/{sample}.{stage}.sorted.bam"
+    output: temp("Results/mapping/{sample}.{stage}.sorted.bam")
     threads: 4
     conda: "envs/samtools.yaml"
     shell:
@@ -144,8 +160,8 @@ rule sort_bam:
      """
 
 rule index_bam:
-    input: "Results/mapping/{sample}.merged.sorted.bam", "Results/temp/{sample}.cleanup"
-    output: "Results/mapping/{sample}.merged.sorted.bam.bai"
+    input: "Results/mapping/{sample}.bam"
+    output: "Results/mapping/{sample}.bam.bai"
     conda: "envs/samtools.yaml"
     shell:
      """
@@ -173,4 +189,46 @@ rule collec_stats:
     params: dir = "Results/mapping/stats/"
     conda: "envs/stat_curator.yaml"
     script: "tools/flagstat_curator.py"
+
+rule remove_duplicates:
+    input: "Results/mapping/{sample}.merged.sorted.bam"
+    output: "Results/mapping/{sample}.dedup.bam"
+    conda: "envs/sambamba.yaml"
+    threads: 4
+    log: "Results/logs/mapping/dedup_{sample}.log"
+    benchmark: "Results/benchmarks/mapping/dedup_{sample}.tsv"
+    shell:
+     """
+     sambamba markdup -r -t {threads} {input} {output} &> {log}    
+     """
+
+rule merge_bam:
+# merge all bams. This helps reduce RAM footprint for freebayes
+    input: expand("Results/mapping/{sample}.dedup.bam", sample = SAMPLES)
+    output: "Results/mapping/merged.bam"
+    conda: "envs/sambamba.yaml"
+    threads: 5
+    log: "Results/logs/mapping/merge_bam.log"
+    benchmark: "Results/benchmarks/mapping/merge_bam.tsv"
+    shell:
+     """
+     sambamba merge -t {threads} -l 9 {output} {input} 
+     """
+
+rule freebayes:
+    input:
+        bam = expand("Results/mapping/{sample}.dedup.bam", sample = SAMPLES),
+        bai = expand("Results/mapping/{sample}.dedup.bam.bai", sample = SAMPLES),
+        fai = expand("ref/{genome}.fa.fai", genome = GENOME),
+        fa = expand("ref/{genome}.fa", genome = GENOME)
+    output: "Results/variants/variants.vcf"
+    conda: "envs/freebayes.yaml"
+    params: time="3-0"
+    threads: 36
+    log: "Results/logs/variant_calling/freebayes.log"
+    benchmark: "Results/benchmarks/variant_calling/freebayes.tsv"
+    shell:
+     """
+     freebayes-parallel <(fasta_generate_regions.py {input.fai} 100000) {threads} -f {input.fa} {input.bam} > {output}
+     """
 
