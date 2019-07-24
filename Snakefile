@@ -89,7 +89,7 @@ rule trim:
     output: 
         r1 = "Results/trimmed_data/{sample}_R1.qc.fq.gz",
         r2 = "Results/trimmed_data/{sample}_R2.qc.fq.gz"
-    conda: "envs/trimmomatic.yaml"
+    conda: "envs/fastp.yaml"
     threads: 4
     shell:
      """
