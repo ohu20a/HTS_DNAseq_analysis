@@ -15,3 +15,7 @@ bwa_mem:
 
 sort_bam:
   mem: "5g"
+
+freebayes:
+  mem: "70g"
+  partition: "bmh"
