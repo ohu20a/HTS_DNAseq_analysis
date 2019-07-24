@@ -9,7 +9,8 @@ import subprocess
 sample = snakemake.wildcards.sample
 files = snakemake.input
 output = snakemake.output
+threads = snakemake.threads
 if len(files) == 1:
     subprocess.run(["mv", files[0], output])
 else:
-    subprocess.run(["samtools", output].extend(files))
+    subprocess.run(["sambamba", "-t", threads, output].extend(files))
