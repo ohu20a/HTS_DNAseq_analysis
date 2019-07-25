@@ -100,7 +100,7 @@ rule trim:
 
 rule trim_fastqc:
     input: "Results/trimmed_data/{sample}.qc.fq.gz"
-    output: "Results/trimmed_fastqc/{sample}_fastqc.html"
+    output: "Results/trimmed_fastqc/{sample}.qc_fastqc.html"
     conda: "envs/fastqc.yaml"
     params: time = "60"
     shell:
@@ -109,7 +109,7 @@ rule trim_fastqc:
      """
 
 rule trimmed_multiqc:
-    input: expand("Results/trimmed_fastqc/{sample}_fastqc.html", sample = RAW_FILES)
+    input: expand("Results/trimmed_fastqc/{sample}.qc_fastqc.html", sample = RAW_FILES)
     output: "Results/trimmed_fastqc/multiqc_report.html"
     conda: "envs/fastqc.yaml"
     shell:
