@@ -66,7 +66,7 @@ rule fa_idx:
 
 rule raw_fastqc:
     input: "raw_data/{sample}.fastq.gz"
-    output: "Results/raw_fastqc/{sample}.fastqc.html"
+    output: "Results/raw_fastqc/{sample}_fastqc.html"
     params: time="60"
     conda: "envs/fastqc.yaml"
     shell:
@@ -75,7 +75,7 @@ rule raw_fastqc:
      """
 
 rule raw_multiqc:
-    input: expand("Results/raw_fastqc/{sample}.fastqc.html", sample = RAW_FILES)
+    input: expand("Results/raw_fastqc/{sample}_fastqc.html", sample = RAW_FILES)
     output: "Results/raw_fastqc/multiqc_report.html"
     conda: "envs/fastqc.yaml"
     shell:
@@ -92,7 +92,7 @@ rule trim:
         r2 = "Results/trimmed_data/{sample}_R2.qc.fq.gz"
     conda: "envs/fastp.yaml"
     params: time = "240"
-    threads: 4
+    threads: 6
     shell:
      """
      fastp -i {input.r1} -o {output.r1} -I {input.r2} -O {output.r2} --detect_adapter_for_pe --thread {threads}
@@ -100,16 +100,16 @@ rule trim:
 
 rule trim_fastqc:
     input: "Results/trimmed_data/{sample}.qc.fq.gz"
-    output: "Results/trimmed_fastqc/{sample}.fastqc.html"
+    output: "Results/trimmed_fastqc/{sample}_fastqc.html"
     conda: "envs/fastqc.yaml"
     params: time = "60"
     shell:
      """
-     fastqc -o Results/trimmed_fastqc/{sample} {input}
+     fastqc -o Results/trimmed_fastqc/ {input}
      """
 
 rule trimmed_multiqc:
-    input: expand("Results/trimmed_fastqc/{sample}.fastqc.html", sample = RAW_FILES)
+    input: expand("Results/trimmed_fastqc/{sample}_fastqc.html", sample = RAW_FILES)
     output: "Results/trimmed_fastqc/multiqc_report.html"
     conda: "envs/fastqc.yaml"
     shell:
@@ -119,7 +119,7 @@ rule trimmed_multiqc:
 
 rule bwa_index:
     input: expand("ref/{genome}.fa", genome = GENOME)
-    output: expand("ref/{genome}.{ext}", genome = GENOME, ext = ["amb", "ann", "bwt", "pac", "sa"])
+    output: expand("ref/{genome}.fa.{ext}", genome = GENOME, ext = ["amb", "ann", "bwt", "pac", "sa"])
     params: time = "120"
     conda: "envs/bwa.yaml"
     shell:
@@ -127,7 +127,7 @@ rule bwa_index:
      bwa index {input}
      """
 
-rule bwa:
+rule bwa_mem:
     input:
         rules.bwa_index.output, 
         r1 = "Results/trimmed_data/{sample}_{lane}_R1.qc.fq.gz",
@@ -135,12 +135,12 @@ rule bwa:
     output: temp("Results/mapping/{sample}_{lane}.aligned.bam")
     conda: "envs/bwa.yaml"
     params: time="2-0"
-    threads: 4
+    threads: 12
     log: "logs/mapping/bwa_{sample}_{lane}.log"
     benchmark: "benchmarks/mapping/{sample}_{lane}.tsv"
     shell:
      """
-     bwa mem -t {threads} -R "@RG\\tID:{wildcards.sample}_{wildcards.lane}\\tSM:{wildcards.sample}\\tPL:illumina" -o {output} {config[genome]} | samtools -bS - > {output}
+     bwa mem -t {threads} -R "@RG\\tID:{wildcards.sample}_{wildcards.lane}\\tSM:{wildcards.sample}\\tPL:illumina" -o {output} ref/{GENOME}.fa {input.r1} {input.r2} | samtools -bS - > {output}
      """
 
 rule combine_bam:
