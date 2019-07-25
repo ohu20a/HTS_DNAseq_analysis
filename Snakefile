@@ -1,4 +1,4 @@
-#localrules: all
+localrules: all, link_ref, collect_stats, unzip_ref, raw_multiqc, trimmed_multiqc
 import re
 import os
 from pprint import pprint
@@ -67,10 +67,11 @@ rule fa_idx:
 rule raw_fastqc:
     input: "raw_data/{sample}.fastq.gz"
     output: "Results/raw_fastqc/{sample}.html"
+    params: time="60"
     conda: "envs/fastqc.yaml"
     shell:
      """
-     fastqc -o Results/raw_fastqc {input}
+     fastqc -o Results/raw_fastqc/ {input}
      """
 
 rule raw_multiqc:
@@ -90,6 +91,7 @@ rule trim:
         r1 = "Results/trimmed_data/{sample}_R1.qc.fq.gz",
         r2 = "Results/trimmed_data/{sample}_R2.qc.fq.gz"
     conda: "envs/fastp.yaml"
+    params: time = "240"
     threads: 4
     shell:
      """
@@ -100,6 +102,7 @@ rule trim_fastqc:
     input: "Results/trimmed_data/{sample}.qc.fq.gz"
     output: "Results/trimmed_fastqc/{sample}.html"
     conda: "envs/fastqc.yaml"
+    params: time = "60"
     shell:
      """
      fastqc -o Results/trimmed_fastqc {input}
@@ -117,6 +120,7 @@ rule trimmed_multiqc:
 rule bwa_index:
     input: expand("ref/{genome}.fa", genome = GENOME)
     output: expand("ref/{genome}.{ext}", genome = GENOME, ext = ["amb", "ann", "bwt", "pac", "sa"])
+    params: time = "120"
     conda: "envs/bwa.yaml"
     shell:
      """
@@ -130,7 +134,7 @@ rule bwa:
         r2 = "Results/trimmed_data/{sample}_{lane}_R2.qc.fq.gz"
     output: temp("Results/mapping/{sample}_{lane}.aligned.bam")
     conda: "envs/bwa.yaml"
-    params: time="1-0"
+    params: time="2-0"
     threads: 4
     log: "logs/mapping/bwa_{sample}_{lane}.log"
     benchmark: "benchmarks/mapping/{sample}_{lane}.tsv"
@@ -143,6 +147,7 @@ rule combine_bam:
     input: lambda wildcards: expand("Results/mapping/{file}.aligned.sorted.bam", file = sample_list(wildcards.sample))
     output: temp("Results/mapping/{sample}.merged.bam")
     threads: 2
+    params: time = "300"
     conda: "envs/sambamba.yaml"
     script:
      """
@@ -153,6 +158,7 @@ rule sort_bam:
     input: "Results/mapping/{sample}.{stage}.bam"
     output: temp("Results/mapping/{sample}.{stage}.sorted.bam")
     threads: 4
+    params: time = "240"
     conda: "envs/samtools.yaml"
     shell:
      """
@@ -163,6 +169,7 @@ rule index_bam:
     input: "Results/mapping/{sample}.bam"
     output: "Results/mapping/{sample}.bam.bai"
     conda: "envs/samtools.yaml"
+    params: time = "240"
     shell:
      """
      samtools index {input}
@@ -195,6 +202,7 @@ rule remove_duplicates:
     output: "Results/mapping/{sample}.dedup.bam"
     conda: "envs/sambamba.yaml"
     threads: 4
+    params: time = "240"
     log: "Results/logs/mapping/dedup_{sample}.log"
     benchmark: "Results/benchmarks/mapping/dedup_{sample}.tsv"
     shell:
@@ -208,6 +216,7 @@ rule merge_bam:
     output: "Results/mapping/merged.bam"
     conda: "envs/sambamba.yaml"
     threads: 5
+    params: time = "300"
     log: "Results/logs/mapping/merge_bam.log"
     benchmark: "Results/benchmarks/mapping/merge_bam.tsv"
     shell:
