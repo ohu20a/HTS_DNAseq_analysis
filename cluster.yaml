@@ -10,6 +10,9 @@ __default__:
   email_type: "ALL"
   mem: "2g"
 
+trim:
+  mem: "5g"
+
 bwa_index:
   mem: "5g"
 
