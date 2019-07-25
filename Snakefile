@@ -66,7 +66,7 @@ rule fa_idx:
 
 rule raw_fastqc:
     input: "raw_data/{sample}.fastq.gz"
-    output: "Results/raw_fastqc/{sample}.html"
+    output: "Results/raw_fastqc/{sample}.fastqc.html"
     params: time="60"
     conda: "envs/fastqc.yaml"
     shell:
@@ -75,7 +75,7 @@ rule raw_fastqc:
      """
 
 rule raw_multiqc:
-    input: expand("Results/raw_fastqc/{sample}.html", sample = RAW_FILES)
+    input: expand("Results/raw_fastqc/{sample}.fastqc.html", sample = RAW_FILES)
     output: "Results/raw_fastqc/multiqc_report.html"
     conda: "envs/fastqc.yaml"
     shell:
@@ -100,16 +100,16 @@ rule trim:
 
 rule trim_fastqc:
     input: "Results/trimmed_data/{sample}.qc.fq.gz"
-    output: "Results/trimmed_fastqc/{sample}.html"
+    output: "Results/trimmed_fastqc/{sample}.fastqc.html"
     conda: "envs/fastqc.yaml"
     params: time = "60"
     shell:
      """
-     fastqc -o Results/trimmed_fastqc {input}
+     fastqc -o Results/trimmed_fastqc/{sample} {input}
      """
 
 rule trimmed_multiqc:
-    input: expand("Results/trimmed_fastqc/{sample}.html", sample = RAW_FILES)
+    input: expand("Results/trimmed_fastqc/{sample}.fastqc.html", sample = RAW_FILES)
     output: "Results/trimmed_fastqc/multiqc_report.html"
     conda: "envs/fastqc.yaml"
     shell:
