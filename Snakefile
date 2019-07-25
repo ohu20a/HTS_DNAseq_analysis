@@ -140,7 +140,7 @@ rule bwa_mem:
     benchmark: "benchmarks/mapping/{sample}_{lane}.tsv"
     shell:
      """
-     bwa mem -t {threads} -R "@RG\\tID:{wildcards.sample}_{wildcards.lane}\\tSM:{wildcards.sample}\\tPL:illumina" -o {output} ref/{GENOME}.fa {input.r1} {input.r2} | samtools -bS - > {output}
+     bwa mem -t {threads} -R "@RG\\tID:{wildcards.sample}_{wildcards.lane}\\tSM:{wildcards.sample}\\tPL:illumina" -o {output} ref/{GENOME}.fa {input.r1} {input.r2} | samtools view -bS - > {output}
      """
 
 rule combine_bam:
