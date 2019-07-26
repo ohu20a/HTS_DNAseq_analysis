@@ -23,4 +23,4 @@ cd /home/pengsc/projects/OAAM/
 
 # Do something
 mkdir -p logs_slurm
-snakemake -j 18 --cluster-config /home/pengsc/projects/OAAM/cluster.yaml --cluster "sbatch -p {cluster.partition} --mem={cluster.mem} -t {cluster.time} -N {cluster.nodes} -n {cluster.tasks}  -c {cluster.cpus} -J {cluster.name} -o {cluster.output} -e {cluster.output} --mail-type={cluster.email_type} --mail-user={cluster.email}" -s /home/pengsc/projects/OAAM/Snakefile -p --use-conda --jobs 20
+snakemake -j 18 --cluster-config /home/pengsc/projects/OAAM/cluster.yaml --cluster "sbatch -p {cluster.partition} --mem={cluster.mem} -t {cluster.time} -N {cluster.nodes} -n {cluster.tasks}  -c {cluster.cpus} -J {cluster.name} -o {cluster.output} -e {cluster.output} --mail-type={cluster.email_type} --mail-user={cluster.email}" --latency-wait=20 -s /home/pengsc/projects/OAAM/Snakefile -p --use-conda --jobs 20
