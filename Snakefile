@@ -145,7 +145,7 @@ rule bwa_mem:
 
 rule combine_bam:
     input: lambda wildcards: expand("Results/mapping/{file}.aligned.sorted.bam", file = sample_list(wildcards.sample))
-    output: temp("Results/mapping/{sample}.merged.bam")
+    output: temp("Results/mapping/{sample}.merged.sorted.bam")
     threads: 2
     params: time = "300"
     log: "logs/mapping/combine_lanes_{sample}.log"
@@ -179,8 +179,8 @@ rule bam_stat:
         bam = "Results/mapping/{sample}.merged.sorted.bam"
     output: "Results/mapping/stats/{sample}.stats.txt"
     conda: "envs/sambamba.yaml"
-    params: time = "60"
-    threads: 2
+    params: time = "120"
+    threads: 4
     log: "Results/logs/mapping/stat_bam_{sample}.log"
     benchmark: "Results/benchmarks/mapping/stat_bam_{sample}.tsv"
     shell:
