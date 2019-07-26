@@ -224,8 +224,8 @@ rule merge_bam:
 
 rule freebayes:
     input:
-        bam = expand("Results/mapping/{sample}.dedup.bam", sample = SAMPLES),
-        bai = expand("Results/mapping/{sample}.dedup.bam.bai", sample = SAMPLES),
+        bam = "Results/mapping/merged.bam",
+        bai = "Results/mapping/merged.bam.bai",
         fai = expand("ref/{genome}.fa.fai", genome = GENOME),
         fa = expand("ref/{genome}.fa", genome = GENOME)
     output: "Results/variants/variants.vcf"
