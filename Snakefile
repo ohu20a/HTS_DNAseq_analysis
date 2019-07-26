@@ -148,11 +148,9 @@ rule combine_bam:
     output: temp("Results/mapping/{sample}.merged.bam")
     threads: 2
     params: time = "300"
+    log: "logs/mapping/combine_lanes_{sample}.log"
     conda: "envs/sambamba.yaml"
-    script:
-     """
-     tools/merge_bam.py
-     """
+    script: "tools/merge_bam.py"
 
 rule sort_bam:
     input: "Results/mapping/{sample}.{stage}.bam"
@@ -190,7 +188,7 @@ rule bam_stat:
      sambamba flagstat -t {threads} {input.bam} 2>{log} 1>{output}
      """
 
-rule collec_stats:
+rule collect_stats:
     input: expand("Results/mapping/stats/{samples}.stats.txt", samples = SAMPLES)
     output: "Results/metrics/mapping_stats.csv"
     params: dir = "Results/mapping/stats/"
