@@ -19,7 +19,8 @@ for file in RAW_FILES:
     match = re.match(r"([\w\d]+)_([\w\d]+)_(R[12])", file)
     if match:
         sample, lane, read = match[1], match[2], match[3]
-        SAMPLES.append(sample)
+        if not sample in SAMPLES:
+            SAMPLES.append(sample)
         SAMPLES_DICT[sample][lane][read] = file
 # given a sample name, return all lanes of that sample
 def sample_list(sample):
@@ -211,10 +212,10 @@ rule remove_duplicates:
 rule merge_bam:
 # merge all bams. This helps reduce RAM footprint for freebayes
     input: expand("Results/mapping/{sample}.dedup.bam", sample = SAMPLES)
-    output: "Results/mapping/merged.bam"
+    output: temp("Results/mapping/merged.bam")
     conda: "envs/sambamba.yaml"
-    threads: 5
-    params: time = "300"
+    threads: 10
+    params: time = "1-00:00:00"
     log: "Results/logs/mapping/merge_bam.log"
     benchmark: "Results/benchmarks/mapping/merge_bam.tsv"
     shell:
