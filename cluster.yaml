@@ -33,4 +33,4 @@ remove_duplicates:
   mem: "8g"
 
 merge_bam:
-  mem: "10g"
+  mem: "20g"
